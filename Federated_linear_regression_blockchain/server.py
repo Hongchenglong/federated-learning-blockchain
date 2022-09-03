@@ -1,14 +1,11 @@
-import socket
 import pickle
+import socket
 import threading
 import time
-import json
 
-import pygad
-import pygad.nn
-import pygad.gann
 import numpy
 import pandas
+
 import backprop as bp
 import blockchain as bl
 
@@ -102,7 +99,7 @@ class SocketThread(threading.Thread):
                     received_data = b""
                     # If still nothing received for a number of seconds specified by the recv_timeout attribute, return with status 0 to close the connection.
                     if (time.time() -
-                            self.recv_start_time) > self.recv_timeout:
+                        self.recv_start_time) > self.recv_timeout:
                         return None, 0  # 0 means the connection is no longer active and it should be closed.
 
                 elif str(received_data)[-18:-7] == '-----------':

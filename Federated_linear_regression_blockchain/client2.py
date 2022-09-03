@@ -1,14 +1,9 @@
-import socket
 import pickle
-import numpy
-import json
+import socket
 
-import pygad
-import pygad.nn
-import pygad.gann
+import numpy
 import pandas
-import math
-import backprop as bp
+
 import blockchain as bl
 
 # Data Input

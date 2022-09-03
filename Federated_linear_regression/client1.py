@@ -1,5 +1,6 @@
-import socket
 import pickle
+import socket
+
 import numpy
 import pandas
 

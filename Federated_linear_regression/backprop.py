@@ -1,6 +1,3 @@
-import numpy as np
-
-
 # from tqdm._tqdm_notebook import tqdm_notebook as tqdm
 # tqdm().pandas()
 
@@ -90,8 +87,8 @@ class NeuralNetwork():
         self.layers = self.create_layers(architecture, input_size)
 
         # Data
-        # self.data = train_data
-        # self.labels = train_labels
+        self.data = train_data
+        self.labels = train_labels
 
         # Cost Function
         self.J, self.d_J = cost_functions[cost_function]

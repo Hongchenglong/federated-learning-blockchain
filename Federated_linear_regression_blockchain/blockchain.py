@@ -1,11 +1,5 @@
-from hashlib import sha256
 import json
-import time
-import pickle
-import dill
-
-from flask import Flask, request
-import requests
+from hashlib import sha256
 
 
 class Block:
@@ -55,7 +49,7 @@ class Blockchain:
         genesis_block = Block(0, 0, 0, 0, 0, "0")
         genesis_block.hash = genesis_block.compute_hash()
         self.chain.append(genesis_block)
-    
+
     @property
     def last_block(self):
         return self.chain[-1]
@@ -87,12 +81,12 @@ class Blockchain:
             # if idx == 0:
             #     continue  # skip genesis block
             block = Block(block_data.index,
-                        block_data.cli_model,
-                        block_data.fin_model,
-                        block_data.cli,
-                        block_data.timestamp,
-                        block_data.previous_hash,
-                        block_data.nonce)
+                          block_data.cli_model,
+                          block_data.fin_model,
+                          block_data.cli,
+                          block_data.timestamp,
+                          block_data.previous_hash,
+                          block_data.nonce)
             proof = block_data.hash
             added = self.add_block(block, proof)
             if not added:
@@ -168,12 +162,9 @@ class Blockchain:
     #     proof = self.proof_of_work(new_block)
     #     self.add_block(new_block, proof)
 
-        # self.unconfirmed_transactions = []
+    # self.unconfirmed_transactions = []
 
-        # return True
-
-
-
+    # return True
 
 # app = Flask(__name__)
 

@@ -1,9 +1,11 @@
-import socket
 import pickle
+import socket
 import threading
 import time
+
 import numpy
 import pandas
+
 import backprop as bp
 
 model = None
