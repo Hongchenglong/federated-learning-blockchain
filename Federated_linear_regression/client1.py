@@ -1,26 +1,18 @@
 import socket
 import pickle
 import numpy
-
-import pygad
-import pygad.nn
-import pygad.gann
 import pandas
-import math
-import backprop as bp
-
 
 # Data Input
 
 df = pandas.read_csv('data.csv')
 
-data = df[:int(len(df)/2)]
+data = df[:int(len(df) / 2)]
 
 X = data.drop('charges', axis=1)
 y = data['charges']
 y = numpy.array(y)
 y = y.reshape((len(y), 1))
-
 
 # Preparing the NumPy array of the inputs.
 data_inputs = numpy.array(X)
@@ -32,9 +24,9 @@ data_outputs = numpy.array(y)
 data_inputs = data_inputs.T
 data_outputs = data_outputs.T
 
-mean = numpy.mean(data_inputs, axis = 1, keepdims=True)
-std_dev = numpy.std(data_inputs, axis = 1, keepdims=True)
-data_inputs = (data_inputs - mean)/std_dev
+mean = numpy.mean(data_inputs, axis=1, keepdims=True)
+std_dev = numpy.std(data_inputs, axis=1, keepdims=True)
+data_inputs = (data_inputs - mean) / std_dev
 
 
 def recv(soc, buffer_size=1024, recv_timeout=10):
@@ -44,7 +36,9 @@ def recv(soc, buffer_size=1024, recv_timeout=10):
             soc.settimeout(recv_timeout)
             received_data += soc.recv(buffer_size)
         except socket.timeout:
-            print("A socket.timeout exception occurred because the server did not send any data for {recv_timeout} seconds.".format(recv_timeout=recv_timeout))
+            print(
+                "A socket.timeout exception occurred because the server did not send any data for {recv_timeout} seconds.".format(
+                    recv_timeout=recv_timeout))
             return None, 0
         except BaseException as e:
             return None, 0
@@ -59,6 +53,7 @@ def recv(soc, buffer_size=1024, recv_timeout=10):
         return None, 0
 
     return received_data, 1
+
 
 soc = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
 print("Socket Created.\n")
@@ -75,20 +70,20 @@ subject = "echo"
 NN_model = None
 
 while True:
-    data = {"subject": subject, "data": NN_model, "mark":"-----------"}
+    data = {"subject": subject, "data": NN_model, "mark": "-----------"}
     data_byte = pickle.dumps(data)
     print("data sent to server {}".format(len(data_byte)))
-    
+
     # for checking logs
     # f = open("logs.cli","a")
     # f.write(str(data_byte))
     # f.close()
     print("Sending the Model to the Server.\n")
     soc.sendall(data_byte)
-    
+
     print("Receiving Reply from the Server.")
-    received_data, status = recv(soc=soc, 
-                                 buffer_size=1024, 
+    received_data, status = recv(soc=soc,
+                                 buffer_size=1024,
                                  recv_timeout=10)
     if status == 0:
         print("Nothing Received from the Server.")
@@ -124,7 +119,7 @@ while True:
     error = NN_model.calc_accuracy(data_inputs, data_outputs, "RMSE")
 
     # print("Predictions from model {predictions}".format(predictions = prediction))
-    print("Error from model(RMSE) {error}".format(error = error))    
+    print("Error from model(RMSE) {error}".format(error=error))
     # ga_instance.run()
 
     # ga_instance.plot_result()s

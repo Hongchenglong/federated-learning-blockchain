@@ -2,10 +2,6 @@ import socket
 import pickle
 import threading
 import time
-
-import pygad
-import pygad.nn
-import pygad.gann
 import numpy
 import pandas
 import backprop as bp
@@ -21,7 +17,6 @@ y = df['charges']
 y = numpy.array(y)
 y = y.reshape((len(y), 1))
 
-
 # Preparing the NumPy array of the inputs.
 data_inputs = numpy.array(X)
 # Preparing the NumPy array of the outputs.
@@ -30,10 +25,9 @@ data_outputs = y
 data_inputs = data_inputs.T
 data_outputs = data_outputs.T
 
-mean = numpy.mean(data_inputs, axis = 1, keepdims=True)
-std_dev = numpy.std(data_inputs, axis = 1, keepdims=True)
-data_inputs = (data_inputs - mean)/std_dev
-
+mean = numpy.mean(data_inputs, axis=1, keepdims=True)
+std_dev = numpy.std(data_inputs, axis=1, keepdims=True)
+data_inputs = (data_inputs - mean) / std_dev
 
 num_classes = 1
 num_inputs = 12
@@ -47,10 +41,11 @@ sema = threading.Semaphore()
 #                                 hidden_activations=["relu"],
 #                                 output_activation="relu")
 
-description = [{"num_nodes" : 12, "activation" : "relu"},
-               {"num_nodes" : 1, "activation" : "relu"}]
+description = [{"num_nodes": 12, "activation": "relu"},
+               {"num_nodes": 1, "activation": "relu"}]
 
-NN_model = bp.NeuralNetwork(description,num_inputs,"mean_squared", data_inputs, data_outputs, learning_rate=0.001)
+NN_model = bp.NeuralNetwork(description, num_inputs, "mean_squared", data_inputs, data_outputs, learning_rate=0.001)
+
 
 class SocketThread(threading.Thread):
 
@@ -66,20 +61,20 @@ class SocketThread(threading.Thread):
         received_data = b""
         while True:
             try:
-                
+
                 data = self.connection.recv(self.buffer_size)
                 received_data += data
 
-                if data == b'': # Nothing received from the client.
+                if data == b'':  # Nothing received from the client.
                     received_data = b""
                     # If still nothing received for a number of seconds specified by the recv_timeout attribute, return with status 0 to close the connection.
                     if (time.time() - self.recv_start_time) > self.recv_timeout:
-                        return None, 0 # 0 means the connection is no longer active and it should be closed.
+                        return None, 0  # 0 means the connection is no longer active and it should be closed.
 
                 elif str(received_data)[-18:-7] == '-----------':
                     # print(str(received_data)[-19:-8])
                     # print("All data ({data_len} bytes) Received from {client_info}.".format(client_info=self.client_info, data_len=len(received_data)))
-                    
+
                     if len(received_data) > 0:
                         try:
                             # Decoding the data (bytes).
@@ -107,13 +102,12 @@ class SocketThread(threading.Thread):
             W_b = other_model.layers[i].W
             b_a = model.layers[i].b
             b_b = other_model.layers[i].b
-            model.layers[i].W = (W_a + W_b)/2
-            model.layers[i].b = (b_a + b_b)/2
-        
+            model.layers[i].W = (W_a + W_b) / 2
+            model.layers[i].b = (b_a + b_b) / 2
+
         # print("Updated model", model.layers)
 
         return model
-
 
         # model_weights = numpy.array(model_weights)
         # other_model_weights = numpy.array(other_model_weights)
@@ -142,7 +136,7 @@ class SocketThread(threading.Thread):
                         model.data = data_inputs
                         model.labels = data_outputs
                         model.forward_pass()
-                        
+
                         predictions = model.layers[-1].a
                         error = model.calc_accuracy(data_inputs, data_outputs, "RMSE")
 
@@ -171,16 +165,16 @@ class SocketThread(threading.Thread):
                             model.data = data_inputs
                             model.labels = data_outputs
                             model.forward_pass()
-                        
+
                             predictions = model.layers[-1].a
 
                             # predictions = numpy.array(predictions)
-                            
+
                             # predictions = predictions.reshape((-1,))
                             # print("predictions shape", predictions.shape)
                             # print("data shape", data_outputs.shape)
 
-                            error = model.calc_accuracy(data_inputs, data_outputs, "RMSE")                            
+                            error = model.calc_accuracy(data_inputs, data_outputs, "RMSE")
                             # In case a client sent a model to the server despite that the model error is 0.0. In this case, no need to make changes in the model.
                             if error <= 0.15:
                                 data = {"subject": "done", "data": None, "mark": "-----------"}
@@ -194,13 +188,11 @@ class SocketThread(threading.Thread):
                             # print(model.trained_weights)
                             # print(model, best_model)
                             # self.model_averaging(model, best_model)
-                            
 
-                        
                         model.data = data_inputs
                         model.labels = data_outputs
                         model.forward_pass()
-                        
+
                         predictions = model.layers[-1].a
 
                         # predictions = numpy.array(predictions)
@@ -209,8 +201,8 @@ class SocketThread(threading.Thread):
 
                         error = model.calc_accuracy(data_inputs, data_outputs, "MAE")
                         print("Error(RMSE) from {info} = {error}".format(error=error, info=self.client_info))
-                        counter+=1
-                        print("counter ",counter)
+                        counter += 1
+                        print("counter ", counter)
                         # f = open("logs_ser","a")
                         # f.write(str(model.tolist()))
                         # f.write("---------------------------\n")
@@ -220,7 +212,7 @@ class SocketThread(threading.Thread):
                             print("sent", data)
                             response = pickle.dumps(data)
                             print("data_sent", len(response))
-                            
+
                         else:
                             data = {"subject": "done", "data": None, "mark": "-----------"}
                             response = pickle.dumps(data)
@@ -229,7 +221,7 @@ class SocketThread(threading.Thread):
                         print("Error Decoding the Client's Data: {msg}.\n".format(msg=e))
                 else:
                     response = pickle.dumps("Response from the Server")
-                            
+
                 try:
                     # print("Len of data sent {}".format(len(response)))
                     self.connection.sendall(response)
@@ -237,9 +229,12 @@ class SocketThread(threading.Thread):
                     print("Error Sending Data to the Client: {msg}.\n".format(msg=e))
 
             else:
-                print("The received dictionary from the client must have the 'subject' and 'data' keys available. The existing keys are {d_keys}.".format(d_keys=received_data.keys()))
+                print(
+                    "The received dictionary from the client must have the 'subject' and 'data' keys available. The existing keys are {d_keys}.".format(
+                        d_keys=received_data.keys()))
         else:
-            print("A dictionary is expected to be received from the client but {d_type} received.".format(d_type=type(received_data)))
+            print("A dictionary is expected to be received from the client but {d_type} received.".format(
+                d_type=type(received_data)))
         # self.lock.release()
 
     def run(self):
@@ -249,18 +244,23 @@ class SocketThread(threading.Thread):
         while True:
             self.recv_start_time = time.time()
             time_struct = time.gmtime()
-            date_time = "Waiting to Receive Data Starting from {day}/{month}/{year} {hour}:{minute}:{second} GMT".format(year=time_struct.tm_year, month=time_struct.tm_mon, day=time_struct.tm_mday, hour=time_struct.tm_hour, minute=time_struct.tm_min, second=time_struct.tm_sec)
+            date_time = "Waiting to Receive Data Starting from {day}/{month}/{year} {hour}:{minute}:{second} GMT".format(
+                year=time_struct.tm_year, month=time_struct.tm_mon, day=time_struct.tm_mday, hour=time_struct.tm_hour,
+                minute=time_struct.tm_min, second=time_struct.tm_sec)
             print(date_time)
             received_data, status = self.recv()
             if status == 0:
                 self.connection.close()
-                print("Connection Closed with {client_info} either due to inactivity for {recv_timeout} seconds or due to an error.".format(client_info=self.client_info, recv_timeout=self.recv_timeout), end="\n\n")
+                print(
+                    "Connection Closed with {client_info} either due to inactivity for {recv_timeout} seconds or due to an error.".format(
+                        client_info=self.client_info, recv_timeout=self.recv_timeout), end="\n\n")
                 break
 
             # print(received_data)
             sema.acquire()
             self.reply(received_data)
             sema.release()
+
 
 soc = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
 print("Socket Created.\n")
@@ -280,7 +280,7 @@ while True:
         connection, client_info = soc.accept()
         # print("New Connection from {client_info}.".format(client_info=client_info))
         socket_thread = SocketThread(connection=connection,
-                                     client_info=client_info, 
+                                     client_info=client_info,
                                      buffer_size=1024,
                                      recv_timeout=10)
         socket_thread.start()
