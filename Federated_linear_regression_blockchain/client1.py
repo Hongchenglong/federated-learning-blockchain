@@ -11,13 +11,13 @@ import blockchain as bl
 df = pandas.read_csv('data.csv')  # reading data from data.csv
 
 data = df[:int(len(df) / 2)]
-cli = "cli_1"
 
 X = data.drop('charges', axis=1)  # remove column changes
 y = data['charges']
 y = numpy.array(y)
 y = y.reshape((len(y), 1))
 
+cli = "cli_1"
 blockchain = bl.Blockchain()
 blockchain.create_genesis_block()  # first block of Bitcoin ever mined
 
@@ -49,14 +49,10 @@ def recv(soc, buffer_size=1024, recv_timeout=10):
             return None, 0
         except BaseException as e:
             return None, 0
-            print(
-                "An error occurred while receiving data from the server {msg}."
-                .format(msg=e))
 
     try:
         # print(str(received_data)[-18:-7])
-        print(
-            "All data ({data_len} bytes).".format(data_len=len(received_data)))
+        print("All data ({data_len} bytes).".format(data_len=len(received_data)))
         received_data = pickle.loads(received_data)
     except BaseException as e:
         print("Error Decoding the Client's Data: {msg}.\n".format(msg=e))
@@ -107,17 +103,17 @@ while True:
         print("Length of chain", len(blockchain.chain))
         last_block = blockchain.chain[-1]
         print("hash of last block client", last_block.hash)
-        for k in chain:
-            new_block = bl.Block(index=k.index,
-                                 cli_model=k.cli_model,
-                                 fin_model=k.fin_model,
-                                 timestamp=k.timestamp,
-                                 previous_hash=k.previous_hash,
-                                 cli=k.cli,
-                                 nonce=k.nonce)
-            print("From ", k.cli)
-            print("previous hash from server", k.previous_hash)
-            proof = k.hash
+        for block in chain:
+            new_block = bl.Block(index=block.index,
+                                 cli_model=block.cli_model,
+                                 fin_model=block.fin_model,
+                                 timestamp=block.timestamp,
+                                 previous_hash=block.previous_hash,
+                                 cli=block.cli,
+                                 nonce=block.nonce)
+            print("From ", block.cli)
+            print("previous hash from server", block.previous_hash)
+            proof = block.hash
             print("hash of this block", proof)
             blockchain = blockchain.add_block(new_block, proof)
             if not blockchain:
@@ -150,11 +146,10 @@ while True:
     print("Error from model(RMSE) {error}".format(error=error))
     # ga_instance.run()
 
-    # ga_instance.plot_result()s
+    # ga_instance.plot_result()
 
     subject = "model"
-    chain = bl.Block(last_block.index + 1, NN_model, 0, 0, last_block.hash,
-                     cli)
+    chain = bl.Block(last_block.index + 1, NN_model, 0, 0, last_block.hash, cli)
 
 soc.close()
 print("Socket Closed.\n")

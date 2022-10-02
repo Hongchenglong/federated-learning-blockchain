@@ -6,50 +6,8 @@ import time
 import numpy
 import pandas
 
+import blockchain as bl
 import backprop as bp
-
-model = None
-counter = 0
-# https://towardsdatascience.com/visualising-data-with-seaborn-who-pays-more-for-health-insurance-200d01892ba5
-# 数据集 https://www.kaggle.com/datasets/mirichoi0218/insurance
-# 数据集分析 https://github.com/chongjason914/seaborn-tutorial/blob/main/insurance-data-visualisation.ipynb
-df = pandas.read_csv('data.csv')
-# X去掉charges列，y取charges列
-X = df.drop('charges', axis=1)
-y = df['charges']
-y = numpy.array(y)
-y = y.reshape((len(y), 1))
-
-# Preparing the NumPy array of the inputs.
-data_inputs = numpy.array(X)
-# Preparing the NumPy array of the outputs.
-data_outputs = y
-# 转置
-data_inputs = data_inputs.T
-data_outputs = data_outputs.T
-# https://www.cnblogs.com/peixu/articles/13393958.html
-mean = numpy.mean(data_inputs, axis=1, keepdims=True)  # 均值
-std_dev = numpy.std(data_inputs, axis=1, keepdims=True)  # 标准差
-# 数据标准化：先减去均值，再除以方差
-# 减去均值是为了突出差异；除以方差，使网络关注整个图像的变化
-data_inputs = (data_inputs - mean) / std_dev
-
-num_inputs = 12
-num_classes = 1
-sema = threading.Semaphore()
-
-# num_solutions = 6
-# GANN_instance = pygad.gann.GANN(num_solutions=num_solutions,
-#                                 num_neurons_input=num_inputs,
-#                                 num_neurons_hidden_layers=[12],
-#                                 num_neurons_output=num_classes,
-#                                 hidden_activations=["relu"],
-#                                 output_activation="relu")
-
-description = [{"num_nodes": 12, "activation": "relu"},
-               {"num_nodes": 1, "activation": "relu"}]
-
-NN_model = bp.NeuralNetwork(description, num_inputs, "mean_squared", data_inputs, data_outputs, learning_rate=0.001)
 
 
 class SocketThread(threading.Thread):
@@ -78,12 +36,14 @@ class SocketThread(threading.Thread):
                 # Nothing received from the client.
                 if data == b'':
                     received_data = b""
-                    # If still nothing received for a number of seconds specified by the recv_timeout attribute, return with status 0 to close the connection.
+                    # If still nothing received for a number of seconds specified by the recv_timeout attribute,
+                    # return with status 0 to close the connection.
                     if (time.time() - self.recv_start_time) > self.recv_timeout:
                         return None, 0  # 0 means the connection is no longer active and it should be closed.
                 elif str(received_data)[-18:-7] == '-----------':
                     # print(str(received_data)[-19:-8])
-                    # print("All data ({data_len} bytes) Received from {client_info}.".format(client_info=self.client_info, data_len=len(received_data)))
+                    # print("All data ({data_len} bytes) Received from {client_info}."
+                    # .format(client_info=self.client_info, data_len=len(received_data)))
 
                     if len(received_data) > 0:
                         try:
@@ -95,7 +55,8 @@ class SocketThread(threading.Thread):
                             print("Error Decoding the Client's Data: {msg}.\n".format(msg=e))
                             return None, 0
                 else:
-                    # In case data are received from the client, update the recv_start_time to the current time to reset the timeout counter.
+                    # In case data are received from the client,
+                    # update the recv_start_time to the current time to reset the timeout counter.
                     self.recv_start_time = time.time()
             except BaseException as e:
                 print("Error Receiving Data from the Client: {msg}.\n".format(msg=e))
@@ -112,8 +73,6 @@ class SocketThread(threading.Thread):
         Returns: 模型
 
         """
-        # print("Model ", model.layers)
-        # print("Other_Model ",other_model.layers)
         for i in range(len(model.layers)):
             W_a = model.layers[i].W
             W_b = other_model.layers[i].W
@@ -122,16 +81,7 @@ class SocketThread(threading.Thread):
             model.layers[i].W = (W_a + W_b) / 2
             model.layers[i].b = (b_a + b_b) / 2
 
-        # print("Updated model", model.layers)
-
         return model
-
-        # model_weights = numpy.array(model_weights)
-        # other_model_weights = numpy.array(other_model_weights)
-        # print("Shape of model",model_weights.shape)
-        # new_weights = numpy.mean([model_weights, other_model_weights], axis=0)
-
-        # pygad.nn.update_layers_trained_weights(last_layer=model, final_weights=new_weights)
 
     def reply(self, received_data):
         """
@@ -147,20 +97,14 @@ class SocketThread(threading.Thread):
 
         """
         # self.lock.acquire()
-        global NN_model, data_inputs, data_outputs, model, counter
+        global NN_model, data_inputs, data_outputs, model, counter, blockchain
         if type(received_data) is dict:
             if ("data" in received_data.keys()) and ("subject" in received_data.keys()):
                 subject = received_data["subject"]
-                # print("Client's Message Subject is {subject}.".format(subject=subject))
-                # print("Replying from Client.", received_data)
                 if subject == "echo":
+                    chain = blockchain.chain[1:]
                     if model is None:
-                        # 如果是第一次调用，回传默认的模型
-                        data = {"subject": "model", "data": NN_model, "mark": "-----------"}
-                        # f = open("logs_ser","a")
-                        # f.write(str(NN_model.tolist()))
-                        # f.write("---------------------------\n")
-                        # f.close()
+                        data = {"subject": "model", "data": chain, "mark": "-----------"}
                     else:
                         # todo server的data_inputs和client的数据集一致
                         # model是聚合后的模型
@@ -172,54 +116,61 @@ class SocketThread(threading.Thread):
 
                         # predictions = model.layers[-1].a
                         # error = numpy.sum(numpy.abs(predictions - data_outputs))/data_outputs.shape[0]
-                        # In case a client sent a model to the server despite that the model error is 0.0. In this case, no need to make changes in the model.
-                        if error == 0:
+                        # In case a client sent a model to the server despite that the model error is 0.0.
+                        # In this case, no need to make changes in the model.
+                        if error <= 0.25:
                             # done表示结束
-                            data = {"subject": "done", "data": model, "mark": "-----------"}
+                            data = {"subject": "done", "data": chain, "mark": "-----------"}
                         else:
                             # model表示继续训练
-                            data = {"subject": "model", "data": model, "mark": "-----------"}
+                            data = {"subject": "model", "data": chain, "mark": "-----------"}
                     try:
                         response = pickle.dumps(data)
                     except BaseException as e:
                         print("Error Encoding the Message: {msg}.\n".format(msg=e))
                 elif subject == "model":
                     try:
-                        best_model = received_data["data"]
+                        block_model = received_data["data"]
+                        reqd_index = block_model.index
+                        cli_model = block_model.cli_model
+                        cli = block_model.cli
+                        print("came from {}".format(cli))
+
                         # best_model_idx = received_data["best_solution_idx"]
                         # print(GANN_instance, best_model_idx)
                         # best_model = GANN_instance.population_networks[best_model_idx]
                         if model is None:
-                            model = best_model
-                            print(model)
+                            model = cli_model
                         else:
-                            # todo 为什么要计算model误差
-                            # 模型不为空，训练新模型，与传输的模型聚合
                             # print("shape of data {input}".format(input=data_inputs.shape))
                             model.data = data_inputs
                             model.labels = data_outputs
                             model.forward_pass()
                             error = model.calc_accuracy(data_inputs, data_outputs, "RMSE")
 
-                            # predictions = model.layers[-1].a
-                            # predictions = numpy.array(predictions)
-                            # predictions = predictions.reshape((-1,))
-                            # print("predictions shape", predictions.shape)
-                            # print("data shape", data_outputs.shape)
-                            # In case a client sent a model to the server despite that the model error is 0.0. In this case, no need to make changes in the model.
-                            if error <= 0.15:
-                                data = {"subject": "done", "data": None, "mark": "-----------"}
+                            # In case a client sent a model to the server despite that the model error is 0.0.
+                            # In this case, no need to make changes in the model.
+                            if error <= 0.25:
+                                chain = blockchain.chain[reqd_index:]
+                                data = {"subject": "done", "data": chain, "mark": "-----------"}
                                 response = pickle.dumps(data)
                                 # print("Error in total {}".format(error))
                                 # return
                             else:
-                                # todo 如果现有模型的误差大于0.15，那么就跟现有模型聚合，以提升性能
-                                model = self.model_averaging(model, best_model)
-
-                            # print(best_model.trained_weights)
-                            # print(model.trained_weights)
-                            # print(model, best_model)
-                            # self.model_averaging(model, best_model)
+                                model_avg = self.model_averaging(model, cli_model)
+                                last_block = blockchain.chain[-1]
+                                new_block = bl.Block(
+                                    index=last_block.index + 1,
+                                    cli_model=cli_model,
+                                    fin_model=model_avg,
+                                    timestamp=time.time(),
+                                    previous_hash=last_block.hash,
+                                    cli=cli)
+                                proof = blockchain.proof_of_work(new_block)
+                                blockchain.add_block(new_block, proof)
+                                model = model_avg
+                                # todo counter的位置
+                                counter += 1
 
                         # 判断回传的模型误差
                         model.data = data_inputs
@@ -227,27 +178,19 @@ class SocketThread(threading.Thread):
                         model.forward_pass()
                         error = model.calc_accuracy(data_inputs, data_outputs, "MAE")
 
-                        # predictions = model.layers[-1].a
-                        # predictions = numpy.array(predictions)
-                        # predictions = predictions.reshape((-1,))
-                        # print("Model Predictions: {predictions}".format(predictions=predictions))
+                        print("Error(RMSE) from {info} = {error}\ncounter {counter}"
+                              .format(error=error, info=self.client_info, counter=counter))
+                        chain = blockchain.chain[reqd_index:]
 
-                        print("Error(RMSE) from {info} = {error}".format(error=error, info=self.client_info))
-                        counter += 1
-                        print("counter ", counter)
-                        # f = open("logs_ser","a")
-                        # f.write(str(model.tolist()))
-                        # f.write("---------------------------\n")
-                        # f.close()
-                        if error >= 0.15:
+                        if error >= 0.25:
                             # model，继续训练
-                            data = {"subject": "model", "data": model, "mark": "-----------"}
+                            data = {"subject": "model", "data": chain, "mark": "-----------"}
                             response = pickle.dumps(data)
                             print("sent", data)
                             print("data_sent", len(response))
                         else:
                             # done 完成
-                            data = {"subject": "done", "data": None, "mark": "-----------"}
+                            data = {"subject": "done", "data": chain, "mark": "-----------"}
                             response = pickle.dumps(data)
 
                     except BaseException as e:
@@ -262,9 +205,8 @@ class SocketThread(threading.Thread):
                     print("Error Sending Data to the Client: {msg}.\n".format(msg=e))
 
             else:
-                print(
-                    "The received dictionary from the client must have the 'subject' and 'data' keys available. The existing keys are {d_keys}.".format(
-                        d_keys=received_data.keys()))
+                print("The received dictionary from the client must have the 'subject' and 'data' keys available. "
+                      "The existing keys are {d_keys}.".format(d_keys=received_data.keys()))
         else:
             print("A dictionary is expected to be received from the client but {d_type} received.".format(
                 d_type=type(received_data)))
@@ -297,6 +239,54 @@ class SocketThread(threading.Thread):
             self.reply(received_data)
             sema.release()
 
+
+model = None
+# https://towardsdatascience.com/visualising-data-with-seaborn-who-pays-more-for-health-insurance-200d01892ba5
+# 数据集 https://www.kaggle.com/datasets/mirichoi0218/insurance
+# 数据集分析 https://github.com/chongjason914/seaborn-tutorial/blob/main/insurance-data-visualisation.ipynb
+df = pandas.read_csv('data.csv')
+# X去掉charges列，y取charges列
+X = df.drop('charges', axis=1)
+y = df['charges']
+y = numpy.array(y)
+y = y.reshape((len(y), 1))
+
+# Preparing the NumPy array of the inputs.
+data_inputs = numpy.array(X)
+# Preparing the NumPy array of the outputs.
+data_outputs = y
+# 转置
+data_inputs = data_inputs.T
+data_outputs = data_outputs.T
+# https://www.cnblogs.com/peixu/articles/13393958.html
+mean = numpy.mean(data_inputs, axis=1, keepdims=True)  # 均值
+std_dev = numpy.std(data_inputs, axis=1, keepdims=True)  # 标准差
+# 数据标准化：先减去均值，再除以方差
+# 减去均值是为了突出差异；除以方差，使网络关注整个图像的变化
+data_inputs = (data_inputs - mean) / std_dev
+
+num_inputs = 12
+num_classes = 1
+sema = threading.Semaphore()
+
+description = [{"num_nodes": 12, "activation": "relu"},
+               {"num_nodes": 1, "activation": "relu"}]
+
+NN_model = bp.NeuralNetwork(description, num_inputs, "mean_squared", data_inputs, data_outputs, learning_rate=0.001)
+
+blockchain = bl.Blockchain()
+blockchain.create_genesis_block()
+last_block = blockchain.chain[-1]
+new_block = bl.Block(index=last_block.index + 1,
+                     cli_model=0,
+                     fin_model=NN_model,
+                     timestamp=time.time(),
+                     previous_hash=last_block.hash,
+                     cli="")
+proof = blockchain.proof_of_work(new_block)
+blockchain.add_block(new_block, proof)
+last_block = blockchain.chain[-1]
+counter = 2
 
 soc = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
 print("Socket Created.\n")

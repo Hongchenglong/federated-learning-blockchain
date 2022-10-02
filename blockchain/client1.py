@@ -10,14 +10,14 @@ import blockchain as bl
 
 df = pandas.read_csv('data.csv')  # reading data from data.csv
 
-data = df[int(len(df) / 2):]
+data = df[:int(len(df) / 2)]
 
 X = data.drop('charges', axis=1)  # remove column changes
 y = data['charges']
 y = numpy.array(y)
 y = y.reshape((len(y), 1))
 
-cli = "cli_2"
+cli = "cli_1"
 blockchain = bl.Blockchain()
 blockchain.create_genesis_block()  # first block of Bitcoin ever mined
 
@@ -48,6 +48,7 @@ def recv(soc, buffer_size=1024, recv_timeout=10):
                 .format(recv_timeout=recv_timeout))
             return None, 0
         except BaseException as e:
+            print("An error occurred while receiving data from the server {msg}.".format(msg=e))
             return None, 0
 
     try:
@@ -98,7 +99,6 @@ while True:
 
     subject = received_data["subject"]
     if subject == "model":
-        # NN_model = received_data["data"]
         chain = received_data["data"]
         print("Length of chain", len(blockchain.chain))
         last_block = blockchain.chain[-1]
@@ -137,12 +137,8 @@ while True:
     NN_model.data = data_inputs
     NN_model.labels = data_outputs
 
-    history = NN_model.train(1000)
-    # print(history)
-    prediction = NN_model.layers[-1].a
     error = NN_model.calc_accuracy(data_inputs, data_outputs, "RMSE")
 
-    # print("Predictions from model {predictions}".format(predictions = prediction))
     print("Error from model(RMSE) {error}".format(error=error))
     # ga_instance.run()
 

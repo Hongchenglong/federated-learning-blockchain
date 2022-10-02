@@ -46,20 +46,10 @@ sema = threading.Semaphore()
 #                                 hidden_activations=["relu"],
 #                                 output_activation="relu")
 
-description = [{
-    "num_nodes": 12,
-    "activation": "relu"
-}, {
-    "num_nodes": 1,
-    "activation": "relu"
-}]
+description = [{"num_nodes": 12, "activation": "relu"},
+               {"num_nodes": 1, "activation": "relu"}]
 
-NN_model = bp.NeuralNetwork(description,
-                            num_inputs,
-                            "mean_squared",
-                            data_inputs,
-                            data_outputs,
-                            learning_rate=0.001)
+NN_model = bp.NeuralNetwork(description, num_inputs, "mean_squared", data_inputs, data_outputs, learning_rate=0.001)
 
 last_block = blockchain.chain[-1]
 new_block = bl.Block(index=last_block.index + 1,

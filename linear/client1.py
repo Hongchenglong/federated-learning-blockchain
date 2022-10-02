@@ -4,38 +4,32 @@ import socket
 import numpy
 import pandas
 
-import blockchain as bl
-
 # Data Input
+df = pandas.read_csv('data.csv')
+# todo server用完整的数据集训练，client1用一半的数据训练
+data = df[:int(len(df) / 2)]
 
-df = pandas.read_csv('data.csv')  # reading data from data.csv
-
-data = df[int(len(df) / 2):]
-
-X = data.drop('charges', axis=1)  # remove column changes
+X = data.drop('charges', axis=1)
 y = data['charges']
 y = numpy.array(y)
 y = y.reshape((len(y), 1))
 
-cli = "cli_2"
-blockchain = bl.Blockchain()
-blockchain.create_genesis_block()  # first block of Bitcoin ever mined
-
 # Preparing the NumPy array of the inputs.
 data_inputs = numpy.array(X)
 # print("Shape of input",data_inputs.shape)
-
 # Preparing the NumPy array of the outputs.
 data_outputs = numpy.array(y)
 
 data_inputs = data_inputs.T
 data_outputs = data_outputs.T
 
+# 数据标准化
 mean = numpy.mean(data_inputs, axis=1, keepdims=True)
 std_dev = numpy.std(data_inputs, axis=1, keepdims=True)
 data_inputs = (data_inputs - mean) / std_dev
 
 
+# 接收 TCP 数据，数据以字符串形式返回，bufsize 指定要接收的最大数据量。
 def recv(soc, buffer_size=1024, recv_timeout=10):
     received_data = b""
     while str(received_data)[-18:-7] != '-----------':
@@ -44,10 +38,11 @@ def recv(soc, buffer_size=1024, recv_timeout=10):
             received_data += soc.recv(buffer_size)
         except socket.timeout:
             print(
-                "A socket.timeout exception occurred because the server did not send any data for {recv_timeout} seconds."
-                .format(recv_timeout=recv_timeout))
+                "A socket.timeout exception occurred because the server did not send any data for {recv_timeout} seconds.".format(
+                    recv_timeout=recv_timeout))
             return None, 0
         except BaseException as e:
+            print("An error occurred while receiving data from the server {msg}.".format(msg=e))
             return None, 0
 
     try:
@@ -74,10 +69,9 @@ except BaseException as e:
 
 subject = "echo"
 NN_model = None
-chain = None
 
 while True:
-    data = {"subject": subject, "data": chain, "mark": "-----------"}
+    data = {"subject": subject, "data": NN_model, "mark": "-----------"}
     data_byte = pickle.dumps(data)
     print("data sent to server {}".format(len(data_byte)))
 
@@ -89,7 +83,9 @@ while True:
     soc.sendall(data_byte)
 
     print("Receiving Reply from the Server.")
-    received_data, status = recv(soc=soc, buffer_size=1024, recv_timeout=10)
+    received_data, status = recv(soc=soc,
+                                 buffer_size=1024,
+                                 recv_timeout=10)
     if status == 0:
         print("Nothing Received from the Server.")
         break
@@ -98,31 +94,12 @@ while True:
 
     subject = received_data["subject"]
     if subject == "model":
-        # NN_model = received_data["data"]
-        chain = received_data["data"]
-        print("Length of chain", len(blockchain.chain))
-        last_block = blockchain.chain[-1]
-        print("hash of last block client", last_block.hash)
-        for block in chain:
-            new_block = bl.Block(index=block.index,
-                                 cli_model=block.cli_model,
-                                 fin_model=block.fin_model,
-                                 timestamp=block.timestamp,
-                                 previous_hash=block.previous_hash,
-                                 cli=block.cli,
-                                 nonce=block.nonce)
-            print("From ", block.cli)
-            print("previous hash from server", block.previous_hash)
-            proof = block.hash
-            print("hash of this block", proof)
-            blockchain = blockchain.add_block(new_block, proof)
-            if not blockchain:
-                raise Exception("The chain dump is tampered!!")
-        # blockchain.add_blocks(chain)
-
-        last_block = blockchain.chain[-1]
-        # print(last_block.fin_model)
-        NN_model = last_block.fin_model
+        NN_model = received_data["data"]
+        # print(NN_model)
+        # f = open("model_logs", "a")
+        # f.write(str(NN_model.tolist()))
+        # f.write("-------------------")
+        # f.close()
         # print("Architecture of the model {}".format(NN_model.architecture))
         # print("Cost function the model {}".format(NN_model.cost_function))
     elif subject == "done":
@@ -139,17 +116,15 @@ while True:
 
     history = NN_model.train(1000)
     # print(history)
-    prediction = NN_model.layers[-1].a
-    error = NN_model.calc_accuracy(data_inputs, data_outputs, "RMSE")
-
+    prediction = NN_model.layers[-1].a  # y_hat
     # print("Predictions from model {predictions}".format(predictions = prediction))
+    error = NN_model.calc_accuracy(data_inputs, data_outputs, "RMSE")  # todo 拿训练集作为测试集？
     print("Error from model(RMSE) {error}".format(error=error))
     # ga_instance.run()
 
     # ga_instance.plot_result()
 
     subject = "model"
-    chain = bl.Block(last_block.index + 1, NN_model, 0, 0, last_block.hash, cli)
 
 soc.close()
 print("Socket Closed.\n")

@@ -1,10 +1,22 @@
-# from tqdm._tqdm_notebook import tqdm_notebook as tqdm
-# tqdm().pandas()
+import numpy as np
 
-class Layer():
 
-    def __init__(self, model, f, d_f, input_dims=None, output_dims=None, input_layer=False, output_layer=False,
-                 learning_rate=0.001):
+class Layer(object):
+
+    def __init__(self, model, f, d_f, input_dims=None, output_dims=None,
+                 input_layer=False, output_layer=False, learning_rate=0.001):
+        """
+
+        Args:
+            model:
+            f: 激活函数
+            d_f: 激活函数的导数
+            input_dims: 输入维度
+            output_dims: 输出维度
+            input_layer: 输入层是第几层
+            output_layer: 输出层是第几层
+            learning_rate: 学习率
+        """
 
         self.model = model
         self.input_dims = input_dims
@@ -12,10 +24,10 @@ class Layer():
         self.learning_rate = learning_rate
 
         # Parameters
-        self.a = None
-        self.z = None
-        self.W = None
-        self.b = None
+        self.a = None  # 激活后的值
+        self.z = None  # 激活前的值
+        self.W = None  # 权重
+        self.b = None  # 偏置
 
         self.dW = None
         self.db = None
@@ -54,7 +66,7 @@ class Layer():
         self.z = self.W.dot(prev_a) + self.b
         self.a = self.f(self.z)
 
-    def backpropagate(self):
+    def back_propagate(self):
         prev_a = self.get_prev_a()
 
         if self.output_layer:
@@ -74,10 +86,20 @@ class Layer():
         self.b = self.b - self.learning_rate * self.db
 
 
-class NeuralNetwork():
+class NeuralNetwork(object):
 
-    def __init__(self, architecture, input_size, cost_function, train_data=None, train_labels=None,
-                 learning_rate=0.001):
+    def __init__(self, architecture, input_size, cost_function,
+                 train_data=None, train_labels=None, learning_rate=0.001):
+        """
+
+        Args:
+            architecture: 架构
+            input_size: 输入大小
+            cost_function: 损失函数
+            train_data: 训练数据
+            train_labels: 训练标签
+            learning_rate: 学习率
+        """
 
         self.learning_rate = learning_rate
         self.architecture = architecture
@@ -91,6 +113,7 @@ class NeuralNetwork():
         self.labels = train_labels
 
         # Cost Function
+        # self.J: 损失函数，self.d_J：损失函数的导数
         self.J, self.d_J = cost_functions[cost_function]
 
     def calc_J(self, y_hat):
@@ -119,7 +142,6 @@ class NeuralNetwork():
             return (y_pred == self.labels).mean()
 
     def create_layers(self, architecture, input_size):
-
         layers = []
 
         for i, config in enumerate(architecture):
@@ -150,7 +172,7 @@ class NeuralNetwork():
 
     def backward_pass(self):
         for layer in reversed(self.layers):
-            layer.backpropagate()
+            layer.back_propagate()
 
     def learn(self):
         for layer in self.layers:
@@ -165,18 +187,18 @@ class NeuralNetwork():
         Returns: 损失函数列表
 
         """
-        history = []
+        train_history = []
         for i in range(epochs):
             self.forward_pass()
             cost = self.calc_J(self.layers[-1].a)
-            history.append(cost)
+            train_history.append(cost)
             # if i % 50 == 0:
             #     print ("Cost after iteration %i: %f" %(i, cost))        
             self.backward_pass()
             self.learn()
 
         # Training done. Return history
-        return history
+        return train_history
 
 
 # COST FUNCTIONS
@@ -201,14 +223,12 @@ def d_mean_squared(y, y_hat):
 
 
 cost_functions = {
-    "cross_entropy_sigmoid": (cross_entropy_sigmoid, cross_entropy_sigmoid_derivative),
-    "mean_squared": (mean_squared, d_mean_squared)
+    "mean_squared": (mean_squared, d_mean_squared),
+    "cross_entropy_sigmoid": (cross_entropy_sigmoid, cross_entropy_sigmoid_derivative)
 }
 
+
 # ACTIVATION FUNCTIONS
-
-import numpy as np
-
 
 def sigmoid(x):
     s = 1 / (1 + np.exp(-x))
@@ -238,45 +258,49 @@ def d_tanh(x):
     return 1 - d * d
 
 
-activation_functions = {"sigmoid": (sigmoid, d_sigmoid), "relu": (relu, d_relu), "tanh": (tanh, d_tanh)}
+activation_functions = {
+    "relu": (relu, d_relu),
+    "tanh": (tanh, d_tanh),
+    "sigmoid": (sigmoid, d_sigmoid)
+}
 
-"""# Application on Cancer Dataset"""
-
+# """# Application on Cancer Dataset"""
+#
 # import matplotlib.pyplot as plt
 # from sklearn.model_selection import train_test_split
 # from sklearn.datasets import load_breast_cancer
-
+#
 # X, y = load_breast_cancer(return_X_y=True)
 # y = y.reshape((len(y), 1))
-
+#
 # # Split Data
 # train_X, test_X, train_y, test_y = train_test_split(X, y, test_size=0.2)
 # train_X = train_X.T
 # test_X = test_X.T
-
+#
 # # Normalize
-# mean = np.mean(train_X, axis = 1, keepdims=True)
-# std_dev = np.std(train_X, axis = 1, keepdims=True)
-# train_X = (train_X - mean)/std_dev
-# test_X = (test_X - mean)/std_dev
-
+# mean = np.mean(train_X, axis=1, keepdims=True)
+# std_dev = np.std(train_X, axis=1, keepdims=True)
+# train_X = (train_X - mean) / std_dev
+# test_X = (test_X - mean) / std_dev
+#
 # train_y = train_y.T
 # test_y = test_y.T
-
-# train_X.shape, train_y.shape, test_X.shape, test_y.shape
-
-# description = [{"num_nodes" : 100, "activation" : "relu"},
-#                {"num_nodes" : 50, "activation" : "relu"},
-#                {"num_nodes" : 1, "activation" : "sigmoid"}]
-
-# model = NeuralNetwork(description,30,"cross_entropy_sigmoid", train_X, train_y, learning_rate=0.001)
-
+#
+# var = train_X.shape, train_y.shape, test_X.shape, test_y.shape
+#
+# description = [{"num_nodes": 100, "activation": "relu"},
+#                {"num_nodes": 50, "activation": "relu"},
+#                {"num_nodes": 1, "activation": "sigmoid"}]
+#
+# model = NeuralNetwork(description, 30, "cross_entropy_sigmoid", train_X, train_y, learning_rate=0.001)
+#
 # history = model.train(1000)
-
+#
 # plt.plot(history)
-
+#
 # acc = model.calc_accuracy(train_X, train_y)
 # print("Accuracy of the model on the training set is = {}".format(acc))
-
+#
 # acc = model.calc_accuracy(test_X, test_y)
 # print("Accuracy of the model on the test set is = {}".format(acc))

@@ -12,7 +12,7 @@ class Layer():
         self.learning_rate = learning_rate
 
         # Parameters
-        self.a = None
+        self.a = None  # y_hat
         self.z = None
         self.W = None
         self.b = None

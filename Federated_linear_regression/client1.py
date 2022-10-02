@@ -5,9 +5,8 @@ import numpy
 import pandas
 
 # Data Input
-
 df = pandas.read_csv('data.csv')
-
+# todo server用完整的数据集训练，client1用一半的数据训练
 data = df[:int(len(df) / 2)]
 
 X = data.drop('charges', axis=1)
@@ -18,18 +17,19 @@ y = y.reshape((len(y), 1))
 # Preparing the NumPy array of the inputs.
 data_inputs = numpy.array(X)
 # print("Shape of input",data_inputs.shape)
-
 # Preparing the NumPy array of the outputs.
 data_outputs = numpy.array(y)
 
 data_inputs = data_inputs.T
 data_outputs = data_outputs.T
 
+# 数据标准化
 mean = numpy.mean(data_inputs, axis=1, keepdims=True)
 std_dev = numpy.std(data_inputs, axis=1, keepdims=True)
 data_inputs = (data_inputs - mean) / std_dev
 
 
+# 接收 TCP 数据，数据以字符串形式返回，bufsize 指定要接收的最大数据量。
 def recv(soc, buffer_size=1024, recv_timeout=10):
     received_data = b""
     while str(received_data)[-18:-7] != '-----------':
@@ -116,14 +116,13 @@ while True:
 
     history = NN_model.train(1000)
     # print(history)
-    prediction = NN_model.layers[-1].a
-    error = NN_model.calc_accuracy(data_inputs, data_outputs, "RMSE")
-
+    prediction = NN_model.layers[-1].a  # y_hat
     # print("Predictions from model {predictions}".format(predictions = prediction))
+    error = NN_model.calc_accuracy(data_inputs, data_outputs, "RMSE")  # todo 拿训练集作为测试集？
     print("Error from model(RMSE) {error}".format(error=error))
     # ga_instance.run()
 
-    # ga_instance.plot_result()s
+    # ga_instance.plot_result()
 
     subject = "model"
 
