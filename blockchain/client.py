@@ -7,19 +7,18 @@ import blockchain as bl
 class Client(object):
 
     def __init__(self, data, cli):
-        self.data = data
-        self.X = data.drop('charges', axis=1)
-        self.y = numpy.array(data['charges'])
-        self.y = self.y.reshape((len(self.y), 1))
+        X = data.drop('charges', axis=1)
+        y = numpy.array(data['charges'])
+        y = y.reshape((len(y), 1))
 
         # Preparing the NumPy array of the inputs and outputs.
-        self.data_inputs = numpy.array(self.X).T
-        self.data_outputs = numpy.array(self.y).T
+        data_inputs = numpy.array(X).T
+        self.data_outputs = numpy.array(y).T
 
         # 数据标准化
-        self.mean = numpy.mean(self.data_inputs, axis=1, keepdims=True)
-        self.std_dev = numpy.std(self.data_inputs, axis=1, keepdims=True)
-        self.data_inputs = (self.data_inputs - self.mean) / self.std_dev
+        mean = numpy.mean(data_inputs, axis=1, keepdims=True)
+        std_dev = numpy.std(data_inputs, axis=1, keepdims=True)
+        self.data_inputs = (data_inputs - mean) / std_dev
 
         # 区块链
         self.cli = cli
@@ -133,8 +132,12 @@ class Client(object):
             NN_model.data = self.data_inputs
             NN_model.labels = self.data_outputs
 
+            # todo
+            history = NN_model.train(1000)
+            # print(history)
+            prediction = NN_model.layers[-1].a  # y_hat
+            # print("Predictions from model {predictions}".format(predictions = prediction))
             error = NN_model.calc_accuracy(self.data_inputs, self.data_outputs, "RMSE")
-
             print("Error from model(RMSE) {error}".format(error=error))
 
             subject = "model"
